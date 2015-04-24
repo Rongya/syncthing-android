@@ -31,7 +31,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.nio.channels.FileChannel;
 import java.security.SecureRandom;
 import java.util.HashSet;
@@ -105,7 +104,7 @@ public class SyncthingService extends Service {
         public void onApiChange(State currentState);
     }
 
-    private final HashSet<WeakReference<OnApiChangeListener>> mOnApiChangeListeners =
+    private final HashSet<OnApiChangeListener> mOnApiChangeListeners =
             new HashSet<>();
 
     /**
@@ -352,7 +351,11 @@ public class SyncthingService extends Service {
         // Make sure we don't send an invalid state or syncthing might show a "disabled" message
         // when it's just starting up.
         listener.onApiChange(mCurrentState);
-        mOnApiChangeListeners.add(new WeakReference<>(listener));
+        mOnApiChangeListeners.add(listener);
+    }
+
+    public void unregisterOnApiChangeListener(OnApiChangeListener listener) {
+        mOnApiChangeListeners.remove(listener);
     }
 
     private class PollWebGuiAvailableTaskImpl extends PollWebGuiAvailableTask {
@@ -381,11 +384,11 @@ public class SyncthingService extends Service {
      * Must only be called from SyncthingService or {@link RestApi}.
      */
     private void onApiChange() {
-        for (Iterator<WeakReference<OnApiChangeListener>> i = mOnApiChangeListeners.iterator();
+        for (Iterator<OnApiChangeListener> i = mOnApiChangeListeners.iterator();
              i.hasNext(); ) {
-            WeakReference<OnApiChangeListener> listener = i.next();
-            if (listener.get() != null) {
-                listener.get().onApiChange(mCurrentState);
+            OnApiChangeListener listener = i.next();
+            if (listener != null) {
+                listener.onApiChange(mCurrentState);
             } else {
                 i.remove();
             }
